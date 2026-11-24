@@ -1,6 +1,8 @@
 # Local AI Runtime Setup
 
-本文档记录当前项目的本地 AI 运行环境：CUDA 基础检查、Python 虚拟环境、`llama.cpp` 服务启动，以及通过根目录脚本验证本地模型调用。
+> 2026-10-29 更新：本页以下步骤保留了原先由 `llama-server` 直接监听 8080 的配置记录。当前版本由 LocalAiBridge 网关监听 8090，`llama-server` 仅监听本机 8081，ComfyUI 仅监听本机 8188。实际配置与生图接口请以 [README](../README.md) 和 `common.env.example` 为准。
+
+本文档记录当前项目的本地 AI 运行环境：CUDA 基础检查、Python 虚拟环境、`llama.cpp` 服务启动，以及通过 GUI 验证本地模型调用。
 
 ## 当前项目约定
 
@@ -10,14 +12,15 @@
 - 本地模型服务：`llama-server.exe`
 - API 形式：OpenAI 兼容 HTTP API
 - 默认 API 地址：`http://127.0.0.1:8080/v1`
-- 自检入口脚本：`ai_self_check.py`
-- CUDA 12 runtime DLL：项目内 `vendor/cuda12/`
+- 唯一应用入口：`warranty-docflow.py`
+- CUDA 12 runtime DLL：项目上级共享目录 `../vendor/cuda12/`
 
 代码结构遵循 `COMMON_PROJECT_SKILLS.md`：
 
 - `src/localai/modules/`：基础能力模块
-- `src/localai/flows/`：场景编排层
-- 项目根目录 `.py` 文件：独立入口脚本
+- `flows/`：场景编排层
+- `src/localai/modules/`：基础能力模块
+- 项目根目录 `warranty-docflow.py`：唯一应用入口
 
 ## 1. CUDA 基础检查
 
@@ -38,21 +41,21 @@ nvidia-smi
 
 - 已编译好的 `llama-server.exe`
 - `llama-server.exe` 同目录下的 `ggml-cuda.dll`
-- 项目内 `vendor/cuda12/` 下的 CUDA runtime DLL
+- 项目上级共享目录 `../vendor/cuda12/` 下的 CUDA runtime DLL
 
 当前项目随本地目录携带的 CUDA runtime DLL：
 
 ```text
-vendor/cuda12/cudart64_12.dll
-vendor/cuda12/cublas64_12.dll
-vendor/cuda12/cublasLt64_12.dll
+../vendor/cuda12/cudart64_12.dll
+../vendor/cuda12/cublas64_12.dll
+../vendor/cuda12/cublasLt64_12.dll
 ```
 
 这些 DLL 用于让 `ggml-cuda.dll` 在目标机器上能被 Windows 正确加载。部署到其他电脑时，仍需要目标电脑有可用的 NVIDIA 驱动；项目内 DLL 不替代显卡驱动。
 
 ### CUDA runtime DLL 来源
 
-`vendor/cuda12/` 不提交到 git，需要在每台机器本地准备。优先从 NVIDIA 官方 CUDA Toolkit 获取，不要从第三方 DLL 下载站复制。
+`../vendor/cuda12/` 是多个本地项目共用的目录，不提交到本仓库。每台机器只需准备一份；优先从 NVIDIA 官方 CUDA Toolkit 获取，不要从第三方 DLL 下载站复制。
 
 官方下载入口：
 
@@ -64,7 +67,7 @@ https://developer.nvidia.com/cuda-toolkit-archive
 
 1. 在 NVIDIA CUDA Toolkit Archive 下载与 `llama.cpp` 构建匹配的 CUDA 12.x Windows 安装包。
 2. 安装 CUDA Toolkit，或用支持的解压工具从安装包中取出运行时文件。
-3. 从 CUDA Toolkit 安装目录复制以下 DLL 到项目目录 `vendor/cuda12/`：
+3. 从 CUDA Toolkit 安装目录复制以下 DLL 到共享目录 `../vendor/cuda12/`：
 
 ```text
 cudart64_12.dll
@@ -116,9 +119,9 @@ LLAMACPP_AUTOSTART=true
 LLAMACPP_SERVER_PATH=
 LLAMACPP_MODEL_PATH=
 LLAMACPP_MMPROJ_PATH=
-LLAMACPP_EXTRA_DLL_DIRS=./vendor/cuda12
+LLAMACPP_EXTRA_DLL_DIRS=../vendor/cuda12
 LLAMACPP_N_GPU_LAYERS=999
-LLAMACPP_CTX_SIZE=8192
+LLAMACPP_CTX_SIZE=32768
 
 LLAMACPP_REASONING=off
 LLAMACPP_REASONING_BUDGET=0
@@ -129,24 +132,24 @@ LLAMACPP_REASONING_BUDGET=0
 - `LLAMACPP_SERVER_PATH` 指向已编译好的 `llama-server.exe`
 - `LLAMACPP_MODEL_PATH` 指向主模型 `.gguf`
 - `LLAMACPP_MMPROJ_PATH` 指向多模态投影文件；纯文本场景可留空
-- `LLAMACPP_EXTRA_DLL_DIRS` 指向额外 DLL 搜索目录；当前默认使用项目内 `./vendor/cuda12`
+- `LLAMACPP_EXTRA_DLL_DIRS` 指向额外 DLL 搜索目录；当前默认使用项目上级共享目录 `../vendor/cuda12`
 - `LLAMACPP_MODEL` 会作为 `llama-server --alias` 传入，Python 请求使用这个稳定模型名
 - `LLAMACPP_N_GPU_LAYERS=999` 让 `llama.cpp` 尽量将模型层 offload 到显存
-- `LLAMACPP_CTX_SIZE=8192` 限制上下文窗口，避免默认超大上下文导致 KV cache 过大
+- `LLAMACPP_CTX_SIZE=32768` 设置默认 32K 上下文窗口；GUI 的“配置概览”提供一键切换 16K 的按钮
 - `LLAMACPP_REASONING=off` 和 `LLAMACPP_REASONING_BUDGET=0` 用于让 Qwen3 类模型在自检时直接返回 `message.content`
 
-当前已验证的本机配置示例：
+本机配置示例（32K 上下文仍需按实际显存验证）：
 
 ```dotenv
 LLAMACPP_BASE_URL=http://127.0.0.1:8080/v1
 LLAMACPP_MODEL=Qwen3.8-27B-Q4_K_M
 LLAMACPP_AUTOSTART=true
-LLAMACPP_SERVER_PATH=D:\llama-cpp-cu12\llama-server.exe
-LLAMACPP_MODEL_PATH=C:\Users\bcjt_\.lmstudio\models\lmstudio-community\Qwen3.8-27B-GGUF\Qwen3.8-27B-Q4_K_M.gguf
-LLAMACPP_MMPROJ_PATH=C:\Users\bcjt_\.lmstudio\models\lmstudio-community\Qwen3.8-27B-GGUF\mmproj-Qwen3.8-27B-BF16.gguf
-LLAMACPP_EXTRA_DLL_DIRS=./vendor/cuda12
+LLAMACPP_SERVER_PATH=C:\tools\llama.cpp\llama-server.exe
+LLAMACPP_MODEL_PATH=C:\models\Qwen3.8-27B-GGUF\Qwen3.8-27B-Q4_K_M.gguf
+LLAMACPP_MMPROJ_PATH=C:\models\Qwen3.8-27B-GGUF\mmproj-Qwen3.8-27B-BF16.gguf
+LLAMACPP_EXTRA_DLL_DIRS=../vendor/cuda12
 LLAMACPP_N_GPU_LAYERS=999
-LLAMACPP_CTX_SIZE=8192
+LLAMACPP_CTX_SIZE=32768
 LLAMACPP_REASONING=off
 LLAMACPP_REASONING_BUDGET=0
 ```
@@ -156,7 +159,7 @@ LLAMACPP_REASONING_BUDGET=0
 启动本地 AI 时，默认使用经过审核的 Qwen3.8 模型：
 
 ```text
-C:\Users\bcjt_\.lmstudio\models\lmstudio-community\Qwen3.8-27B-GGUF
+C:\models\Qwen3.8-27B-GGUF
 ```
 
 默认主模型为 `Qwen3.8-27B-Q4_K_M.gguf`，多模态投影文件为 `mmproj-Qwen3.8-27B-BF16.gguf`。除非在配置中明确指定其他模型，否则项目应使用这个审核版本。
@@ -166,8 +169,8 @@ C:\Users\bcjt_\.lmstudio\models\lmstudio-community\Qwen3.8-27B-GGUF
 ```yaml
 llamacpp:
   model: ${LLAMACPP_MODEL:-Qwen3.8-27B-Uncensored-Q5_K_M}
-  model_path: '${LLAMACPP_MODEL_PATH:-C:\Users\bcjt_\.lmstudio\models\JonathanColetti\Qwen3.8-27B-Uncensored-GGUF\Qwen3.8-27B-Uncensored-Q5_K_M.gguf}'
-  mmproj_path: '${LLAMACPP_MMPROJ_PATH:-C:\Users\bcjt_\.lmstudio\models\JonathanColetti\Qwen3.8-27B-Uncensored-GGUF\mmproj-Qwen3.8-27B-Uncensored-F16.gguf}'
+  model_path: '${LLAMACPP_MODEL_PATH:-C:\models\Qwen3.8-27B-Uncensored-GGUF\Qwen3.8-27B-Uncensored-Q5_K_M.gguf}'
+  mmproj_path: '${LLAMACPP_MMPROJ_PATH:-C:\models\Qwen3.8-27B-Uncensored-GGUF\mmproj-Qwen3.8-27B-Uncensored-F16.gguf}'
 ```
 
 这段 YAML 仍允许通过同名环境变量覆盖配置。非审核版仅在项目明确配置上述模型时启用；移除这些覆盖项后，应恢复使用默认的审核版 Qwen3.8。非审核版可能生成未经安全对齐或内容过滤的输出，调用方需要自行进行输入校验、输出审查和使用范围控制。
@@ -209,22 +212,22 @@ llamacpp:
 1. `llama-server.exe` 所在目录
 2. `LLAMACPP_EXTRA_DLL_DIRS` 中配置的目录
 
-因此 `LLAMACPP_EXTRA_DLL_DIRS=./vendor/cuda12` 会被解析为项目根目录下的绝对路径，再传给子进程。这样 `ggml-cuda.dll` 能找到 CUDA runtime DLL。
+因此 `LLAMACPP_EXTRA_DLL_DIRS=../vendor/cuda12` 会被解析为项目上级共享目录的绝对路径，再传给子进程。这样多个项目可以共用一套 CUDA runtime DLL，`ggml-cuda.dll` 也能找到它们。
 
 ## 5. CUDA backend 验证
 
 先确认 `llama.cpp` 能看到 CUDA 设备：
 
 ```powershell
-$env:PATH=(Resolve-Path ".\vendor\cuda12").Path + ";D:\llama-cpp-cu12;" + $env:PATH
-& "D:\llama-cpp-cu12\llama-server.exe" --list-devices
+$env:PATH=(Resolve-Path "..\vendor\cuda12").Path + ";C:\tools\llama.cpp;" + $env:PATH
+& "C:\tools\llama.cpp\llama-server.exe" --list-devices
 ```
 
 正常情况下应看到类似：
 
 ```text
 ggml_cuda_init: found 1 CUDA devices
-load_backend: loaded CUDA backend from D:\llama-cpp-cu12\ggml-cuda.dll
+load_backend: loaded CUDA backend from C:\tools\llama.cpp\ggml-cuda.dll
 Available devices:
   CUDA0: NVIDIA GeForce RTX 5090 D v2
 ```
@@ -238,60 +241,28 @@ Available devices:
 
 说明 CUDA backend 没有正确加载。优先检查：
 
-- `vendor/cuda12/` 下是否存在 `cudart64_12.dll`、`cublas64_12.dll`、`cublasLt64_12.dll`
-- `LLAMACPP_EXTRA_DLL_DIRS` 是否指向 `./vendor/cuda12`
+- `../vendor/cuda12/` 下是否存在 `cudart64_12.dll`、`cublas64_12.dll`、`cublasLt64_12.dll`
+- `LLAMACPP_EXTRA_DLL_DIRS` 是否指向 `../vendor/cuda12`
 - `llama-server.exe` 同目录是否存在 `ggml-cuda.dll`
 - NVIDIA 驱动是否可被 `nvidia-smi` 识别
 
-## 6. 项目自检
+## 6. GUI 启动和自检
 
-只检查 CUDA、服务健康状态和模型列表，不发送对话请求：
-
-```powershell
-.\.venv\Scripts\python.exe ai_self_check.py --no-chat
-```
-
-完整端到端检查：
+无终端启动：
 
 ```powershell
-.\.venv\Scripts\python.exe ai_self_check.py --max-tokens 64 --prompt "请直接回答两个字：可用"
+.\.venv\Scripts\pythonw.exe warranty-docflow.py
 ```
 
-成功时会输出类似：
-
-```json
-{
-  "cuda_check": {
-    "command": "nvidia-smi",
-    "ok": true
-  },
-  "llamacpp": {
-    "base_url": "http://127.0.0.1:8080/v1",
-    "model": "local-model",
-    "health": {
-      "status": "ok"
-    },
-    "available_models": [
-      "local-model"
-    ]
-  },
-  "answer": "可用"
-}
-```
-
-最小本地 AI ping 测试：
+调试启动：
 
 ```powershell
-.\.venv\Scripts\python.exe ai_self_check.py --prompt "你好" --max-tokens 32
+.\.venv\Scripts\python.exe warranty-docflow.py
 ```
 
-复杂一点的生成测试：
-
-```powershell
-.\.venv\Scripts\python.exe ai_self_check.py --prompt "用C语言写一个冒泡排序法" --max-tokens 128
-```
-
-当前约定：测试脚本和生产流程在本次运行结束时都会关闭本次启动的 `llama-server.exe`，释放显存。
+窗口启动后自动加载模型，并显示加载进度、模型、局域网 IP、端口、访问地址和 PID。自动启动过程会发送
+一次“你好”推理请求；只有健康检查、模型列表和真实推理都通过后，状态才变为“运行正常”。也可以点击
+“健康检查”按钮随时重新校验服务。关闭窗口或点击“停止模型”会关闭本次启动的 `llama-server.exe`。
 
 ## 7. 手动接口检查
 
@@ -343,12 +314,24 @@ logs/llama_server.err.log
 
 - `nvidia-smi` 不可用：先检查 NVIDIA 驱动是否正常安装
 - `/health` 不可用：检查端口是否被占用，或 `LLAMACPP_SERVER_PATH` 是否正确
+- `couldn't bind HTTP server socket`：配置端口已被其他进程监听，常见原因是另一个项目已经拉起了本地 AI 服务；关闭已有服务或为其中一个项目改用其他端口
 - 模型不存在：检查 `LLAMACPP_MODEL_PATH`，并确认 `.gguf` 文件存在
 - 请求模型名不匹配：访问 `/v1/models`，将 `LLAMACPP_MODEL` 改为返回的模型 id，或使用 `--alias` 保持稳定名称
 - 只返回 reasoning、不返回 content：确认 `LLAMACPP_REASONING=off` 和 `LLAMACPP_REASONING_BUDGET=0`，然后重启 `llama-server`
 - 中文输出乱码：使用项目入口脚本输出；脚本已将 stdout 设置为 UTF-8
-- `llama-server.exe` 进程内存高但显存低：先用 `--list-devices` 确认 CUDA backend 是否加载；若未加载，检查 `vendor/cuda12` 和 `LLAMACPP_EXTRA_DLL_DIRS`
+- `llama-server.exe` 进程内存高但显存低：先用 `--list-devices` 确认 CUDA backend 是否加载；若未加载，检查共享目录 `../vendor/cuda12` 和 `LLAMACPP_EXTRA_DLL_DIRS`
 - 任务结束后显存未释放：检查是否仍有 `llama-server.exe` 残留进程
+
+定位 8080 端口占用进程：
+
+```powershell
+$listener = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
+$listener | Select-Object LocalAddress, LocalPort, OwningProcess
+$listener | ForEach-Object { Get-Process -Id $_.OwningProcess }
+```
+
+确认进程属于其他项目后，应优先通过该项目自己的停止功能正常关闭。只有明确知道目标进程可以终止时，
+才使用 `Stop-Process`，避免误停不属于本项目的服务。
 
 停止本地服务：
 
@@ -379,18 +362,12 @@ finally:
     client.shutdown_server()
 ```
 
-`ai_self_check.py` 已按此方式处理。后续订单截图 OCR、订单结构化识别入口也应沿用同样的生命周期管理方式。
+GUI 已按此方式处理，并在关闭窗口时释放本次加载的模型。
 
-## 10. 新入口脚本接入方式
+## 10. 单一入口与工作流接入
 
-新增一个根目录入口脚本时，应保持入口层很薄：
-
-1. 调用 `bootstrap_context(__file__)`
-2. 初始化配置、日志和上下文
-3. 调用 `src/localai/flows/` 中对应的 `run(...)`
-4. 用 `print_json(...)` 输出结构化结果
-
-需要调用本地模型时，优先在 `flows` 中组合：
+项目根目录只保留 `warranty-docflow.py` 作为应用入口。新增场景时不要增加新的根目录 Python 入口，而应在根目录
+`flows/` 中新增或复用工作流，并由 `warranty-docflow.py` 启动的 GUI 调用。需要调用本地模型时，优先在工作流中组合：
 
 - `LlamaCppConfig.from_config(...)`
 - `LlamaCppClient.ensure_server()`
@@ -398,4 +375,37 @@ finally:
 - `LlamaCppClient.chat(...)`
 - `LlamaCppClient.shutdown_server()`
 
-不要在入口脚本里直接拼接模型路径、启动命令或 HTTP 请求。
+不要在 `warranty-docflow.py` 或 GUI 控件代码中直接拼接模型路径、启动命令或 HTTP 请求。
+
+## 11. 局域网访问
+
+供同一局域网中的设备访问时，本机私有配置使用：
+
+```dotenv
+LLAMACPP_BASE_URL=http://127.0.0.1:8080/v1
+LLAMACPP_HOST=0.0.0.0
+LLAMACPP_PORT=8080
+LLAMACPP_API_KEY=<长随机密钥>
+```
+
+`BASE_URL` 保持回环地址供 Windows 本机自检；`HOST=0.0.0.0` 让服务器监听所有网卡。
+局域网监听时必须配置 API Key。
+
+在管理员 PowerShell 中执行一次防火墙配置：
+
+```powershell
+.\scripts\windows\configure_windows_firewall.ps1
+```
+
+规则仅允许专用网络的本地子网访问 TCP 8080。不要配置路由器端口转发，也不要将该服务暴露到公网。
+
+在 Mac Mini 上将 OpenAI 兼容客户端配置为：
+
+```text
+Base URL: http://<Windows-WLAN-IPv4>:8080/v1
+API Key: common.env 中的 LLAMACPP_API_KEY
+Model: Qwen3.8-27B-Q4_K_M
+```
+
+Windows WLAN IPv4 可通过 `ipconfig` 查看。IP 地址可能由路由器 DHCP 改变，长期使用时建议在路由器中为
+Windows 主机设置 DHCP 地址保留。

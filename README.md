@@ -4,8 +4,8 @@
 
 最近更新见 [更新记录](docs/CHANGELOG.md)。Windows 可直接运行
 `build/delivery/质保作业申请归档.exe`；源码运行
-`python main.py --page summary` 启动本地 HTML 工作台，或运行
-`python main.py --gui` 启动图形控制窗口。
+`python warranty-docflow.py --page summary` 启动本地 HTML 工作台，或运行
+`python warranty-docflow.py --gui` 启动图形控制窗口。
 
 ## 核心原则
 
@@ -53,7 +53,7 @@
 
 ## 本地 HTML 工作流
 
-1. 启动 `python main.py --page summary`，浏览器打开本机工作台。
+1. 启动 `python warranty-docflow.py --page summary`，浏览器打开本机工作台。
 2. 在“文件输入与识别”区域选择或拖入多个文件。此时文件只保留在浏览器队列，不会上传、写入 `_input` 或修改正式 JSON。
 3. 点击“AI 识别”后，文件上传到系统临时目录，由本机 AI/OCR 提供材料分类和文字识别建议；页面展示 Word 业务字段、PDF 类型、图片识别文字以及目标案卷选择。
 4. 人工核对或修改分类、选择案卷，再点击“确认并归档”。确认前取消审核会清除临时文件，不改变正式资料。确认后 Word/PDF 进入既有归档流程，图片按人工确认的材料类型和案卷归属归档。
@@ -162,12 +162,12 @@ INPUT_PATH=${CLOUDSTATION_ROOT}/sample/project/input
 也可以使用 `--input-dir` 指定：
 
 ```powershell
-python main.py --input-dir "sample/project/input"
+python warranty-docflow.py --input-dir "sample/project/input"
 ```
 
 ## 旧目录迁移
 
-旧版平铺目录迁移从 HTML 工作台启动。若尚无正式 JSON，运行 `python main.py` 会打开迁移页面。先查看迁移计划，再填写备份目录并确认执行；正式迁移前会逐文件比较资料目录与备份的大小和 SHA-256。任何差异都会阻止迁移，执行时还会在每次移动前后再次校验哈希。
+旧版平铺目录迁移从 HTML 工作台启动。若尚无正式 JSON，运行 `python warranty-docflow.py` 会打开迁移页面。先查看迁移计划，再填写备份目录并确认执行；正式迁移前会逐文件比较资料目录与备份的大小和 SHA-256。任何差异都会阻止迁移，执行时还会在每次移动前后再次校验哈希。
 
 旧版 Excel 只在首次迁移时读取已有 PDF 对应关系，随后归档到 `.docflow/legacy`。迁移完成后 Excel 不再作为缓存或数据输入。
 
@@ -176,20 +176,20 @@ python main.py --input-dir "sample/project/input"
 启动本机 HTML 工作台：
 
 ```powershell
-python main.py
+python warranty-docflow.py
 ```
 
 工作台从页面选择或拖入文件，再点击“AI 识别”，核对识别结果后点击“确认并归档”。没有正式 JSON 时，页面提供旧目录迁移计划与执行表单。
 
-Windows 图形模式使用同一个 `main.py` 入口。启动后先执行增量归档，再显示本地服务控制
+Windows 图形模式使用同一个 `warranty-docflow.py` 入口。启动后先执行增量归档，再显示本地服务控制
 窗口，可打开汇总页、人工审核页，或点击“更新归档”再次处理 `_input`：
 
 ```powershell
-python main.py --gui
+python warranty-docflow.py --gui
 ```
 
-项目图标位于 `assets/docflow_archive.png`，Windows 图标位于
-`assets/docflow_archive.ico`。双击 `build/delivery/质保作业申请归档.exe`
+项目图标位于 `assets/warranty-docflow.png`，Windows 图标位于
+`assets/warranty-docflow.ico`。双击 `build/delivery/质保作业申请归档.exe`
 可使用同一图形入口。EXE 向上定位项目根目录并读取其中的 `config.yaml` 和
 `common.env`，资料根目录仍由
 `INPUT_PATH` 决定；因此下载后应保留 `build/delivery` 相对项目根目录的
@@ -232,11 +232,11 @@ HTML 页面；“保存并执行审核结果”固定更新同目录的
 也可以从命令行启动：
 
 ```powershell
-python main.py
+python warranty-docflow.py
 ```
 
 正常使用网页时不需要第二个根目录命令；审核结果保存、正式 JSON 回写和页面
-刷新由 `main.py` 对应的服务流程完成。如果正式 JSON 在审核
+刷新由 `warranty-docflow.py` 对应的服务流程完成。如果正式 JSON 在审核
 页面生成后发生过版本变化，页面会拒绝过期结果，须先重新执行完整归档流程。
 
 ## HTML 人工审查视图
@@ -291,7 +291,7 @@ JSON、汇总 HTML 与审批审核页面。
 
 macOS 启动器不会保存 Windows 绝对路径。资料目录自动取 `.command` 文件
 所在目录；项目目录会从资料目录逐级向上查找
-`Python/Project/DocFlow_Renamer`，并兼容 `~/Clooustation`、
+`Python/Project/WarrantyDocflow`，并兼容 `~/Clooustation`、
 `~/CloudStation` 和 `~/Cloudstation`。Python 依次尝试
 `~/anaconda3/bin/python`、`~/opt/anaconda3/bin/python`、
 `/opt/anaconda3/bin/python` 和系统 `python3`。特殊安装位置可通过
@@ -338,10 +338,10 @@ macOS 启动器不会保存 Windows 绝对路径。资料目录自动取 `.comma
 项目根目录只保留一个 Python 启动入口：
 
 ```powershell
-python main.py
+python warranty-docflow.py
 ```
 
-启动后在 HTML 页面完成文件输入、识别归档、旧目录迁移和人工审核；`main.py`
+启动后在 HTML 页面完成文件输入、识别归档、旧目录迁移和人工审核；`warranty-docflow.py`
 负责启动本机服务。Windows 上会在 Chrome 新窗口打开页面，并移动到主显示器后最大化；未安装 Chrome 时使用默认浏览器。业务逻辑保留在 `src/warranty_application_archive/flows/`。
 
 处理完成后的主要成果包括：
@@ -355,7 +355,7 @@ python main.py
 ## 项目结构
 
 ```text
-main.py                                  # 唯一 Python 启动入口
+warranty-docflow.py                                  # 唯一 Python 启动入口
 build/build_run_archive_exe.ps1          # Windows EXE 构建脚本
 assets/                                  # PNG 与 ICO 项目图标
 src/warranty_application_archive/logging_config.py                  # 统一控制台与滚动文件日志
@@ -385,7 +385,7 @@ src/warranty_application_archive/
 因此通知单及对应后续归档场景尚未验证。
 
 ```powershell
-python -m compileall -q src tests main.py
+python -m compileall -q src tests warranty-docflow.py
 python -m pytest -q
-python -m flake8 src tests main.py
+python -m flake8 src tests warranty-docflow.py
 ```

@@ -48,8 +48,8 @@ def write_page_launchers(
                 'if [[ -z "$PROJECT_ROOT" ]]; then',
                 '  SEARCH_ROOT="$SCRIPT_DIR"',
                 '  while [[ "$SEARCH_ROOT" != "/" ]]; do',
-                '    CANDIDATE="$SEARCH_ROOT/Python/Project/DocFlow_Renamer"',
-                '    if [[ -f "$CANDIDATE/main.py" ]]; then',
+                '    CANDIDATE="$SEARCH_ROOT/Python/Project/WarrantyDocflow"',
+                '    if [[ -f "$CANDIDATE/warranty-docflow.py" ]]; then',
                 '      PROJECT_ROOT="$CANDIDATE"',
                 "      break",
                 "    fi",
@@ -58,17 +58,17 @@ def write_page_launchers(
                 "fi",
                 'if [[ -z "$PROJECT_ROOT" ]]; then',
                 "  for CANDIDATE in \\",
-                '    "$HOME/Clooustation/Python/Project/DocFlow_Renamer" \\',
-                '    "$HOME/CloudStation/Python/Project/DocFlow_Renamer" \\',
-                '    "$HOME/Cloudstation/Python/Project/DocFlow_Renamer"; do',
-                '    if [[ -f "$CANDIDATE/main.py" ]]; then',
+                '    "$HOME/Clooustation/Python/Project/WarrantyDocflow" \\',
+                '    "$HOME/CloudStation/Python/Project/WarrantyDocflow" \\',
+                '    "$HOME/Cloudstation/Python/Project/WarrantyDocflow"; do',
+                '    if [[ -f "$CANDIDATE/warranty-docflow.py" ]]; then',
                 '      PROJECT_ROOT="$CANDIDATE"',
                 "      break",
                 "    fi",
                 "  done",
                 "fi",
-                'if [[ ! -f "$PROJECT_ROOT/main.py" ]]; then',
-                '  echo "未找到 DocFlow_Renamer 项目目录。"',
+                'if [[ ! -f "$PROJECT_ROOT/warranty-docflow.py" ]]; then',
+                '  echo "未找到 WarrantyDocflow 项目目录。"',
                 '  echo "可设置 DOCFLOW_PROJECT_ROOT 后重新运行。"',
                 "  exit 1",
                 "fi",
@@ -93,7 +93,7 @@ def write_page_launchers(
                 'cd "$PROJECT_ROOT"',
                 (
                     'exec "$PYTHON_BIN" '
-                    '"$PROJECT_ROOT/main.py" '
+                    '"$PROJECT_ROOT/warranty-docflow.py" '
                     '--input-dir "$SCRIPT_DIR" '
                     f"{macos_arguments}"
                 ),

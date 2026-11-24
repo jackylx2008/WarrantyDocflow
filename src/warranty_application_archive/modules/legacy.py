@@ -135,6 +135,8 @@ class Record:
 class LlamaCppConfig:
     base_url: str
     model: str
+    api_key: str
+    timeout_sec: float
     autostart: bool
     server_path: str
     model_path: str
@@ -160,6 +162,8 @@ class LlamaCppConfig:
         return cls(
             base_url=value("LLAMACPP_BASE_URL", "http://127.0.0.1:8080/v1").rstrip("/"),
             model=value("LLAMACPP_MODEL", "local-model"),
+            api_key=value("LLAMACPP_API_KEY"),
+            timeout_sec=float(value("LLAMACPP_TIMEOUT_SEC", "180")),
             autostart=value("LLAMACPP_AUTOSTART", "true").strip().lower()
             in {"1", "true", "yes", "on"},
             server_path=value("LLAMACPP_SERVER_PATH"),
@@ -208,24 +212,42 @@ class LlamaCppClient:
         return f"{self.server_root_url}/health"
 
     def _get_json(self, url: str, timeout: float = 5) -> Any:
-        with urlopen(url, timeout=timeout) as response:
+        request = Request(url, headers=self._request_headers())
+        with urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
 
-    def _post_json(self, url: str, payload: dict[str, Any], timeout: float = 180) -> Any:
+    def _request_headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self.config.api_key:
+            headers["Authorization"] = f"Bearer {self.config.api_key}"
+        return headers
+
+    def _post_json(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        timeout: float | None = None,
+    ) -> Any:
         request = Request(
             url,
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=self._request_headers(),
             method="POST",
         )
-        with urlopen(request, timeout=timeout) as response:
+        with urlopen(request, timeout=timeout or self.config.timeout_sec) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def is_server_available(self) -> bool:
         try:
             self._get_json(self.health_url, timeout=3)
             return True
-        except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError):
+        except HTTPError as exc:
+            if exc.code in {401, 403}:
+                raise RuntimeError(
+                    "本地 AI 服务认证失败，请检查 common.env 中的 LLAMACPP_API_KEY"
+                ) from exc
+            return False
+        except (URLError, TimeoutError, OSError, json.JSONDecodeError):
             return False
 
     def ensure_server(self) -> None:

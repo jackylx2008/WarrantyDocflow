@@ -477,7 +477,7 @@ def export_summary_html(data: dict[str, Any], root: Path) -> Path:
     if not getattr(sys, "frozen", False):
         entry_point = (
             Path(__file__).resolve().parents[3]
-            / "main.py"
+            / "warranty-docflow.py"
         )
         write_page_launchers(
             root,
@@ -1429,7 +1429,7 @@ _HTML_TEMPLATE = r"""<!doctype html>
     }
     byId("recognizeFiles").addEventListener("click", async () => {
       if (location.protocol === "file:") {
-        intakeStatus.textContent = "请使用本项目 main.py 启动本地 HTML 工作台后再提交文件。";
+        intakeStatus.textContent = "请使用本项目 warranty-docflow.py 启动本地 HTML 工作台后再提交文件。";
         return;
       }
       if (!selectedIntakeFiles.size) {

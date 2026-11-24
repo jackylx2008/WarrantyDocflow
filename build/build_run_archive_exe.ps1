@@ -17,7 +17,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $appName = "质保作业申请归档"
-$iconPath = Join-Path $projectRoot "assets\docflow_archive.ico"
+$iconPath = Join-Path $projectRoot "assets\warranty-docflow.ico"
 $distDir = Join-Path $projectRoot "build\delivery"
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 & $python -m PyInstaller `
@@ -32,7 +32,7 @@ New-Item -ItemType Directory -Path $distDir -Force | Out-Null
     --distpath $distDir `
     --workpath (Join-Path $projectRoot "build\run_archive") `
     --specpath (Join-Path $projectRoot "build") `
-    (Join-Path $projectRoot "main.py")
+    (Join-Path $projectRoot "warranty-docflow.py")
 if ($LASTEXITCODE -ne 0) {
     throw "EXE 构建失败，退出代码: $LASTEXITCODE"
 }

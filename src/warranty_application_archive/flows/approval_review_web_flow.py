@@ -501,7 +501,7 @@ def export_approval_review_html(
     if not getattr(sys, "frozen", False):
         entry_point = (
             Path(__file__).resolve().parents[3]
-            / "main.py"
+            / "warranty-docflow.py"
         )
         write_page_launchers(
             root,

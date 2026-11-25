@@ -887,6 +887,17 @@ def serve_approval_review(
             if parsed.path == "/api/review":
                 self._send_json({"ok": True, "review": review_repository.load()})
                 return
+            if parsed.path == "/api/ai-status":
+                try:
+                    client = legacy.LlamaCppClient(
+                        legacy.LlamaCppConfig.from_repo(repo_root), repo_root
+                    )
+                    online = client.is_server_available()
+                    self._send_json({"ok": True, "online": online})
+                except Exception as exc:
+                    LOGGER.debug("检查本地 AI 状态失败: %s", exc)
+                    self._send_json({"ok": True, "online": False})
+                return
             if parsed.path.startswith("/files/"):
                 relative = unquote(parsed.path[len("/files/") :])
                 try:

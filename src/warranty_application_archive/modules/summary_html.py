@@ -576,8 +576,13 @@ _HTML_TEMPLATE = r"""<!doctype html>
     .intake-heading h2 { margin:0 0 5px; font-size:18px; }
     .intake-heading p { margin:0; color:var(--muted); font-size:13px; }
     .intake-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-    .choose-files, #processFiles { border:1px solid var(--navy); border-radius:7px; padding:9px 13px; color:white; background:var(--navy); cursor:pointer; font-weight:700; }
+    .choose-files, #processFiles, #recognizeFiles { border:1px solid var(--navy); border-radius:7px; padding:9px 13px; color:white; background:var(--navy); cursor:pointer; font:inherit; font-weight:700; line-height:1.4; }
     .choose-files { color:var(--navy); background:white; }
+    #recognizeFiles { color:var(--navy); background:white; }
+    .local-ai-status { display:inline-flex; align-items:center; gap:7px; padding:9px 10px; border:1px solid #aebccd; border-radius:7px; color:var(--navy); background:#fff; white-space:nowrap; font-size:13px; font-weight:400; }
+    .local-ai-status::before { width:8px; height:8px; border-radius:50%; background:#f5c451; content:""; }
+    .local-ai-status[data-state="online"]::before { background:#58d68d; }
+    .local-ai-status[data-state="offline"]::before { background:#ff7b72; }
     #intakeFiles { display:none; }
     #processFiles:disabled { opacity:.6; cursor:wait; }
     .drop-zone { margin-top:13px; border:1px dashed #91a3b8; border-radius:8px; padding:17px; color:var(--muted); text-align:center; background:#f7f9fc; }
@@ -840,7 +845,7 @@ _HTML_TEMPLATE = r"""<!doctype html>
   </header>
   <main>
     <section class="workspace intake-panel" aria-label="文件输入">
-      <div class="intake-heading"><div><h2>文件输入与识别</h2><p>选择或拖入文件，点击 AI 识别后先人工复核分类和案卷归属。确认前文件只在临时区，不写入正式资料。</p><a href="/待人工审核匹配PDF.html">打开待人工审核页面</a></div><div class="intake-actions"><label class="choose-files" for="intakeFiles">选择文件</label><input id="intakeFiles" type="file" multiple><button id="recognizeFiles" type="button">AI 识别</button></div></div>
+      <div class="intake-heading"><div><h2>文件输入与识别</h2><p>选择或拖入文件，点击 AI 识别后先人工复核分类和案卷归属。确认前文件只在临时区，不写入正式资料。</p><a href="/待人工审核匹配PDF.html">打开待人工审核页面</a></div><div class="intake-actions"><span id="localAiStatus" class="local-ai-status" role="status" aria-live="polite">本地 AI：检测中</span><label class="choose-files" for="intakeFiles">选择文件</label><input id="intakeFiles" type="file" multiple><button id="recognizeFiles" type="button">AI 识别</button></div></div>
       <div id="dropZone" class="drop-zone" tabindex="0">支持多文件：可一次拖入多个文件，也可分批拖入</div>
       <div id="intakeStatus" class="intake-status" role="status">仅本机页面可以提交文件。识别和归档由本地程序执行。</div>
     </section>
@@ -891,6 +896,15 @@ _HTML_TEMPLATE = r"""<!doctype html>
     const data = JSON.parse(document.getElementById("summaryData").textContent);
     let activeIndex = 0;
     const byId = (id) => document.getElementById(id);
+    const localAiStatus = byId("localAiStatus");
+    fetch("/api/ai-status", {cache: "no-store"}).then((response) => response.json()).then((status) => {
+      const online = Boolean(status.online);
+      localAiStatus.dataset.state = online ? "online" : "offline";
+      localAiStatus.textContent = online ? "本地 AI：已连接" : "本地 AI：未连接";
+    }).catch(() => {
+      localAiStatus.dataset.state = "offline";
+      localAiStatus.textContent = "本地 AI：未连接";
+    });
     const fileUrl = (path, directory = false) => {
       const normalized = String(path || "").replaceAll("\\", "/").replace(/^\/+/, "");
       const encoded = normalized.split("/").map(encodeURIComponent).join("/");

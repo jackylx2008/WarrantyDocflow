@@ -18,6 +18,7 @@
   JSON、正式 JSON 和正式汇总 HTML。
 - 本地汇总页可选择或拖入多个 Word、PDF 和图片文件；拖入后仅留在浏览器队列。点击“AI 识别”后，文件暂存于系统临时目录并展示识别建议；人工确认分类和案卷归属后才进入归档流程。
 - 汇总页在文件操作区显示本地 AI 连接状态；“AI 识别”与“选择文件”按钮采用一致的尺寸，便于快速确认服务状态并操作。
+- 汇总页桌面布局压缩顶部区域以适配 2K 竖向视口；页面本身不滚动，案卷表格在内部滚动并在打开时定位到底部。
 - 施工人员名单可在审核页人工确认，并关联到本次拖入批次中的一个或多个施工申请；不会为这张名单匹配现存案卷。归档后各申请案卷分别保存名单副本，原始文件哈希一致。
 - Word 申请单是案卷锚点，每份申请建立独立目录。
 - AI 客户端和识别缓存由所有支流程共享，同一内容不会重复识别。
@@ -199,8 +200,12 @@ python warranty-docflow.py --gui
 
 ```powershell
 python -m pip install -r requirements-build.txt
-.\build\build_run_archive_exe.ps1
+.\build_exe.ps1
 ```
+
+打包脚本位于项目根目录。构建成功后会清理 PyInstaller 临时工作目录、spec
+文件和旧的 EXE 副本；快捷方式使用的输出路径保持为
+`build/delivery/质保作业申请归档.exe`。
 
 日常只需将文件放入 `_input` 第一层。程序不递归扫描子目录；支持 `.docx`、
 `.jpg`、`.jpeg`、`.png` 和 `.pdf`。PDF 分类结果保存在正式 JSON 的
@@ -357,7 +362,7 @@ python warranty-docflow.py
 
 ```text
 warranty-docflow.py                                  # 唯一 Python 启动入口
-build/build_run_archive_exe.ps1          # Windows EXE 构建脚本
+build_exe.ps1                             # Windows EXE 构建脚本
 assets/                                  # PNG 与 ICO 项目图标
 src/warranty_application_archive/logging_config.py                  # 统一控制台与滚动文件日志
 config.yaml                        # app 与 flows 分层配置

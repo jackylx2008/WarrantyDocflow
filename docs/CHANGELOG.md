@@ -1,5 +1,17 @@
 # 更新记录
 
+## 2026-11-25（汇总页视口与滚动布局）
+
+- 压缩汇总页标题、文件输入、统计卡片和页签工具栏的垂直占用，让 2K 桌面视口不出现最外层页面滚动条。
+- 案卷表格区域使用内部滚动并在页面打开后定位到底部；窄屏和打印仍使用自然页面布局。
+- 修正表格工作区的纵向弹性布局，确保内部滚动条保留且滚动范围可用。
+
+## 2026-11-25（EXE 打包脚本整理）
+
+- 将 Windows EXE 打包脚本移到项目根目录，方便直接运行。
+- 保留 EXE 输出路径 `build/delivery/质保作业申请归档.exe`；构建成功后清理 PyInstaller 临时目录、spec 文件及旧 EXE 副本。
+- 更新 README 的打包命令与项目结构说明。
+
 ## 2026-11-25（工作台状态与按钮布局）
 
 - 汇总页在“选择文件”左侧显示本地 AI 连接状态，通过本地服务健康检查更新已连接/未连接提示。
@@ -30,7 +42,7 @@
 - 恢复审批 PDF 的机器识别与自动筛选：识别带有中间描述的质保施工审批标题，并结合申请编号和最终审批状态判断文件类型。唯一且证据充分的匹配直接归档；无法确定的文件继续进入人工审核。汇总 HTML 根据正式 JSON 显示归档结果。
 - 保留 HTML 中手工选择审批 PDF 的入口，用于自动匹配未成功的情况；它不替代自动识别流程。
 - `run_archive.py` 增加 Windows 图形模式。窗口可更新归档、打开汇总和人工审核页面，退出时关闭本地服务；源码默认仍运行命令行归档。
-- 新增 `assets/docflow_archive.png` 和 `assets/docflow_archive.ico`，以及 `build/build_run_archive_exe.ps1` 和 `requirements-build.txt`。打包程序为 `build/delivery/质保作业申请归档.exe`，构建脚本位于 `build` 目录。
+- 新增 `assets/docflow_archive.png` 和 `assets/docflow_archive.ico`，以及 EXE 打包脚本和 `requirements-build.txt`。打包程序为 `build/delivery/质保作业申请归档.exe`；当前打包脚本位于项目根目录。
 - 更新项目根目录定位方式，使嵌套在 `build/delivery` 中的 EXE 能读取项目配置和本机 `common.env`。
 
 ## 使用和验证
